@@ -24,6 +24,8 @@
 #define INI_X_SNAKE 20
 #define INI_Y_SNAKE 12
 #define INI_TAM_SNAKE 5
+#define OFFSET_X 1
+#define OFFSET_Y 2
 
 #define TECLADO_ESTENDIDO 224
 
@@ -1252,7 +1254,7 @@ void colidiu(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerra
         case 'C':
             //*p_pontuacao += 2 * (*p_tamanho / 5) * *p_velocidade;
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
-            if (*p_tamanho < max_tamanho - 1) {
+            if (*p_tamanho < max_tamanho) {
                 *p_tamanho += 1;
             }
             gera_novo_item(cenario);
@@ -1633,13 +1635,15 @@ int roda_jogo(int opts[10]) {
 
             proxima_coord = proxima_coordenada(snake.corpo[0], snake.direcao);
 
-            movimenta_snake(&snake, proxima_coord);
+            //movimenta_snake(&snake, proxima_coord);
+
             // Debug
             //gotoxy(1,1);
             //printf("%c\t%d\t%d\n", cenario[snake[0][Y_POS]-1 ][ snake[0][X_POS]-1], snake[0][Y_POS], snake[0][X_POS]);
 
             //item_no_proximo_movimento = cenario[ snake[0][Y_POS]-2 ][ snake[0][X_POS]-1 ];
-            item_no_proximo_movimento = cenario[ snake.corpo[0].y-2 ][ snake.corpo[0].x-1 ];
+//            item_no_proximo_movimento = cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ];
+            item_no_proximo_movimento = cenario[ proxima_coord.y-OFFSET_Y ][ proxima_coord.x-OFFSET_X ];
             //if (cenario[ snake[0][Y_POS]-2 ][ snake[0][X_POS]-1 ] == '1') {
 //            if (item_no_proximo_movimento == '1') {
 //                pause = 1;
@@ -1649,6 +1653,8 @@ int roda_jogo(int opts[10]) {
 
 
             colidiu(&opts[I_OPTS_SCORE], &velocidade, &snake.tamanho, &encerrar, item_no_proximo_movimento, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &snake);
+
+            movimenta_snake(&snake, proxima_coord);
 
             if (item_no_proximo_movimento != '0') {
                 desenha_interface(opts[I_OPTS_SCORE], velocidade, snake.tamanho, opts[I_OPTS_NUMCENARIO]);
@@ -1665,8 +1671,8 @@ int roda_jogo(int opts[10]) {
             desenha_snake(snake.corpo[0].x, snake.corpo[0].y, snake.corpo[snake.tamanho].x, snake.corpo[snake.tamanho].y);
 
             // Atualiza posicao da cobra na matriz do cenario
-            cenario[ snake.corpo[0].y-2 ][ snake.corpo[0].x-1 ] = 'B';
-            cenario[ snake.corpo[snake.tamanho].y-2 ][ snake.corpo[snake.tamanho].x-1 ] = '0';
+            cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ] = 'B';
+            cenario[ snake.corpo[snake.tamanho].y-OFFSET_Y ][ snake.corpo[snake.tamanho].x-OFFSET_X ] = '0';
 
         }
         //gotoxy(1,1);
