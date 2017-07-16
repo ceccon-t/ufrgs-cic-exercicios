@@ -7,6 +7,7 @@
 
 
 #define MAX_X_TELA 80
+#define MAX_Y_TELA 25
 #define NUM_OPCOES 5
 #define LINHA_INICIO_MENU 15
 #define LINHA_INICIO_HIGH_SCORES 12
@@ -101,6 +102,7 @@ void controla_menu(int opts[10]);
 void display_menu_opcoes(int selecionado, int opts[10]);
 void controla_menu_opcoes(int opts[10]);
 void display_creditos();
+void limpa_tela_menu();
 void ini_display_menu();
 void inicializa_snake(SNAKE *p_snake, int tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]);
 void desenha_snake(int x_cabeca, int y_cabeca, int x_cauda, int y_cauda);
@@ -120,6 +122,8 @@ char escolhe_item();
 void gera_novo_item(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]);
 void fim_cenario(int result);
 void processa_score_final(int pontuacao);
+char pega_letra(int x);
+void pega_nome(char *nome);
 int roda_jogo(int opts[10]);
 
 /*
@@ -224,6 +228,7 @@ V
 - cores diferentes para o top 3 ??
 V
 - pegar letras individualmente
+V
 
 =====================================
 TODO:
@@ -505,14 +510,22 @@ void display_creditos() {
                            "2017-01"};
 
 
-    clrscr();
+    //clrscr();
+    limpa_tela_menu();
 
     linhas = sizeof(creditos)/sizeof(creditos[0]);
     for (i = 0; i < linhas; i++) {
-        cputsxy((MAX_X_TELA - strlen(creditos[i]))/2, 10 + i, creditos[i]);
+        cputsxy((MAX_X_TELA - strlen(creditos[i]))/2, LINHA_INICIO_MENU + i, creditos[i]);
     }
 
-    getchar();
+    textbackground(BLACK);
+    textcolor(LIGHTGREEN);
+    cputsxy(35, LINHA_INICIO_MENU+i+2, "  VOLTAR  ");
+    textbackground(BROWN);
+    textcolor(BLACK);
+    gotoxy(42, LINHA_INICIO_MENU+i+2);
+
+    while(getch() != ASCII_ENTER);
 }
 
 void display_high_scores() {
@@ -551,9 +564,19 @@ void display_high_scores() {
     cputsxy(34, LINHA_INICIO_HIGH_SCORES+i+1, "  VOLTAR  ");
     textbackground(BROWN);
     textcolor(BLACK);
-    gotoxy(42, LINHA_INICIO_HIGH_SCORES+i+1);
+    gotoxy(41, LINHA_INICIO_HIGH_SCORES+i+1);
 
     while(getch() != ASCII_ENTER);
+}
+
+void limpa_tela_menu() {
+    int i, j;
+    textbackground(BROWN);
+    for (i = LINHA_INICIO_MENU; i < MAX_Y_TELA; i++) {
+        for (j = 2; j < MAX_X_TELA; j++) {
+                putchxy(j, i, ' ');
+        }
+    }
 }
 
 void ini_display_menu() {
@@ -1473,32 +1496,35 @@ char pega_letra(int x) {
     char letra = 'A';
     int op, fim = 0;
 
-    putchxy(x, 20, letra);
+    putchxy(x, 20, letra); // Mostra a letra atualmente selecionada
     gotoxy(x, 20);
+
     while(!fim){
+
         if (kbhit()) {
             op = getch();
             if (op == TECLADO_ESTENDIDO) {
                 switch(getch()) {
                     case ASCII_CIMA:
-                        letra++;
-                        if (letra > 'Z') {
+                        letra++; // Tratando char como int, facilita a operacao
+                        if (letra > 'Z') { // Limita escolhas ao intervalo 'A-Z'
                             letra = 'A';
                         }
                         break;
                     case ASCII_BAIXO:
                         letra--;
-                        if (letra < 'A') {
+                        if (letra < 'A') { // Idem acima
                             letra = 'Z';
                         }
                         break;
                 }
-                putchxy(x, 20, letra);
+                putchxy(x, 20, letra); // Atualiza a letra na tela
                 gotoxy(x, 20);
             } else if(op == ASCII_ENTER) {
                 fim = 1;
             }
         }
+
     }
 
     return letra;
