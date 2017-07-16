@@ -59,7 +59,7 @@
 
 #define MAX_TUNEIS 5
 
-#define FILENAME_HIGH_SCORES "scoresa.txt"
+#define FILENAME_HIGH_SCORES "scores.txt"
 #define MAX_NOME 3
 #define NUM_HIGH_SCORES 10
 
@@ -117,7 +117,8 @@ void desenha_tuneis(TUNEL tuneis[MAX_TUNEIS], int num_tuneis);
 void desenha_interface(int pontuacao, int velocidade, int tamanho, int cenario_atual);
 void processa_input(SNAKE *p_snake, int *p_pause, int *p_encerrar, int *p_inicializar, /* tirar */ char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]);
 int calcula_pontos(int velocidade, int tamanho, char item);
-void colidiu(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerrar, char item, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, SNAKE *snake);
+void processa_proximo_movimento(COORDENADA proxima_coord, int *p_pontuacao, int *p_velocidade, SNAKE *snake, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, int *p_encerrar, int num_cenario);
+void processa_colisao(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerrar, char item, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, SNAKE *snake, COORDENADA *proxima_coord);
 COORDENADA proxima_coordenada(COORDENADA coord_atual, char direcao);
 void movimenta_snake(SNAKE *p_snake, COORDENADA prox_coord);
 char escolhe_item();
@@ -138,6 +139,7 @@ V
 
 ;; "Colidiu": ? -> ?
 -> "Colidiu"()  "processa_movimento" "processa_passo"
+V
 
 ;; Mov._Snake: Snake Coord -> Void
 -> Mov._Snake()
@@ -1242,16 +1244,35 @@ int calcula_pontos(int velocidade, int tamanho, char item) {
     return pontos_obtidos;
 }
 
-void colidiu(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerrar, char item, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, SNAKE *snake) {
+void processa_proximo_movimento(COORDENADA proxima_coord, int *p_pontuacao, int *p_velocidade, SNAKE *snake, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, int *p_encerrar, int num_cenario){
+    char item_no_proximo_movimento = cenario[ proxima_coord.y-OFFSET_Y ][ proxima_coord.x-OFFSET_X ];
+
+    //movimenta_snake(&snake, proxima_coord);
+    //printf("%d\t%d", proxima_coord.x, proxima_coord.y); getch();
+    if (item_no_proximo_movimento != '0') {
+        processa_colisao(p_pontuacao, p_velocidade, &snake->tamanho, p_encerrar, item_no_proximo_movimento, max_tamanho, cenario, tuneis, num_tuneis, snake, &proxima_coord);
+        desenha_interface(*p_pontuacao, *p_velocidade, snake->tamanho, num_cenario);
+    }
+
+    // Atualiza posicao da cobra na estrutura
+    movimenta_snake(snake, proxima_coord);
+
+    // Atualiza posicao da cobra na matriz do cenario
+    cenario[ snake->corpo[0].y-OFFSET_Y ][ snake->corpo[0].x-OFFSET_X ] = 'B';
+    cenario[ snake->corpo[snake->tamanho].y-OFFSET_Y ][ snake->corpo[snake->tamanho].x-OFFSET_X ] = '0';
+}
+
+
+void processa_colisao(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerrar, char item, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, SNAKE *snake, COORDENADA *proxima_coord) {
     COORDENADA coord_temp;
 
     switch(item) {
-        case '1':
-        case 'B':
+        case '1': // Obstaculo
+        case 'B': // Corpo da cobra
             //*p_encerrar = 1;
             *p_encerrar = GAME_OVER;
             break;
-        case 'C':
+        case 'C': // Comida
             //*p_pontuacao += 2 * (*p_tamanho / 5) * *p_velocidade;
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             if (*p_tamanho < max_tamanho) {
@@ -1259,31 +1280,39 @@ void colidiu(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerra
             }
             gera_novo_item(cenario);
             break;
-        case 'S':
+        case 'S': // Slower
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             gera_novo_item(cenario);
             if (*p_velocidade > 1) { // TODO: tirar numero constante
                 *p_velocidade -= 1;
             }
             break;
-        case 'F':
+        case 'F': // Faster
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             gera_novo_item(cenario);
             if (*p_velocidade < 10) { // TODO: tirar numero constante
                 *p_velocidade += 1;
             }
             break;
-        case 'V':
+        case 'V': // Skip = vitoria = cenario completo
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             *p_encerrar = CENARIO_COMPLETO;
             break;
-        case 'T':
-            if (!entra_tunel(tuneis, snake->corpo, &snake->direcao, num_tuneis )) {
-                coord_temp.x = snake->corpo[0].x+1;
-                coord_temp.y = snake->corpo[0].y+2; // TODO: Offset, again
+        case 'T': // Tunel
+            //if (!entra_tunel(tuneis, snake->corpo, &snake->direcao, num_tuneis )) {
+            if (!entra_tunel(tuneis, proxima_coord, &snake->direcao, num_tuneis )) {
+                //coord_temp.x = snake->corpo[0].x+OFFSET_X;
+                //coord_temp.y = snake->corpo[0].y+OFFSET_Y; // TODO: Offset, again
+                coord_temp.x = proxima_coord->x+OFFSET_X;
+                coord_temp.y = proxima_coord->y+OFFSET_Y; // TODO: Offset, again
                 //movimenta_snake(snake, proxima_coordenada(coord_temp, snake->direcao));
                 coord_temp = proxima_coordenada(coord_temp, snake->direcao);
-                snake->corpo[0] = coord_temp;
+                //snake->corpo[0] = coord_temp;
+                *proxima_coord = coord_temp;
+
+                // Chama uma versao atualizada de si propria para processar o caso de haver um item significativo
+                // logo a frente do tunel
+                processa_colisao(p_pontuacao, p_velocidade, p_tamanho, p_encerrar, cenario[ proxima_coord->y-OFFSET_Y ][ proxima_coord->x-OFFSET_X ], max_tamanho, cenario, tuneis, num_tuneis, snake, proxima_coord);
 
             } else {
                 *p_encerrar = GAME_OVER;
@@ -1327,7 +1356,8 @@ int entra_tunel(TUNEL *tuneis, COORDENADA *corpo, char *direcao, int num_tuneis)
     int i, novo_x, novo_y;
     char nova_direcao;
 
-    i = busca_tunel(tuneis, corpo[0], num_tuneis);
+    //i = busca_tunel(tuneis, corpo[0], num_tuneis);
+    i = busca_tunel(tuneis, *corpo, num_tuneis);
     //printf("\n\n\n\n%c", *direcao); // TODO: limpar debug
     //return 0;
 
@@ -1339,8 +1369,10 @@ int entra_tunel(TUNEL *tuneis, COORDENADA *corpo, char *direcao, int num_tuneis)
     novo_y = tuneis[tuneis[i].id_saida].pos.y; //printf("NovoY:%d\n", novo_y);
     nova_direcao = tuneis[tuneis[i].id_saida].direcao; //printf("NovaD:%c\n", nova_direcao);
 
-    corpo[0].x = novo_x;
-    corpo[0].y = novo_y;
+    //corpo[0].x = novo_x;
+    //corpo[0].y = novo_y;
+    corpo->x = novo_x;
+    corpo->y = novo_y;
     *direcao = nova_direcao;
 
     return 0; // Sucesso
@@ -1651,14 +1683,14 @@ int roda_jogo(int opts[10]) {
 //            }
 
 
+            processa_proximo_movimento(proxima_coord, &opts[I_OPTS_SCORE], &velocidade, &snake, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &encerrar, opts[I_OPTS_NUMCENARIO]);
+            //colidiu(&opts[I_OPTS_SCORE], &velocidade, &snake.tamanho, &encerrar, item_no_proximo_movimento, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &snake);
 
-            colidiu(&opts[I_OPTS_SCORE], &velocidade, &snake.tamanho, &encerrar, item_no_proximo_movimento, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &snake);
+            //movimenta_snake(&snake, proxima_coord);
 
-            movimenta_snake(&snake, proxima_coord);
-
-            if (item_no_proximo_movimento != '0') {
-                desenha_interface(opts[I_OPTS_SCORE], velocidade, snake.tamanho, opts[I_OPTS_NUMCENARIO]);
-            }
+            //if (item_no_proximo_movimento != '0') {
+            //    desenha_interface(opts[I_OPTS_SCORE], velocidade, snake.tamanho, opts[I_OPTS_NUMCENARIO]);
+            //}
 
 
             /*desenha_snake(snake[0][X_POS], snake[0][Y_POS], snake[tamanho][X_POS], snake[tamanho][Y_POS]);
@@ -1670,9 +1702,9 @@ int roda_jogo(int opts[10]) {
 
             desenha_snake(snake.corpo[0].x, snake.corpo[0].y, snake.corpo[snake.tamanho].x, snake.corpo[snake.tamanho].y);
 
-            // Atualiza posicao da cobra na matriz do cenario
-            cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ] = 'B';
-            cenario[ snake.corpo[snake.tamanho].y-OFFSET_Y ][ snake.corpo[snake.tamanho].x-OFFSET_X ] = '0';
+//            // Atualiza posicao da cobra na matriz do cenario
+//            cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ] = 'B';
+//            cenario[ snake.corpo[snake.tamanho].y-OFFSET_Y ][ snake.corpo[snake.tamanho].x-OFFSET_X ] = '0';
 
         }
         //gotoxy(1,1);
