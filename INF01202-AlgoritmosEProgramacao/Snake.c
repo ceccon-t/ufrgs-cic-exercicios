@@ -1,3 +1,9 @@
+/*
+    ================ SNAKE ======================
+    Desenvolvido por Tiago Ceccon e Manuel Micas.
+    2017-01 INF01202-ALGPROG
+*/
+
 #include<stdio.h>
 #include<conio2.h>
 #include<windows.h>
@@ -5,18 +11,56 @@
 #include<time.h>
 #include<stdlib.h>
 
+#define FILENAME_HIGH_SCORES "scores.txt"
+#define FILENAME_CONFIG "config.bin"
+#define FILENAME_TUNEIS "tuneis.bin"
 
 #define MAX_X_TELA 80
 #define MAX_Y_TELA 25
-#define NUM_OPCOES 5
+
 #define LINHA_INICIO_MENU 15
 #define LINHA_INICIO_HIGH_SCORES 12
+#define COLUNA_INICIO_HIGH_SCORES 30
+#define COLUNA_INICIO_MENU_OPCOES 35
+
+#define LINHA_INICIO_FIMCENARIO 11
+#define LINHA_FIM_FIMCENARIO 20
+#define COLUNA_INICIO_FIMCENARIO 25
+#define COLUNA_FIM_FIMCENARIO 65
+
+#define LINHA_MSG_FIMCENARIO 12
+#define COLUNA_MSG_FIMCENARIO 36
+#define LINHA_PONTUACAO_FIMCENARIO 14
+#define COLUNA_PONTUACAO_FIMCENARIO 30
+#define LINHA_SAIR_FIMCENARIO 18
+#define COLUNA_SAIR_FIMCENARIO 33
+
+#define LINHA_INICIO_ENTRAHIGHSCORE 20
+#define LINHA_FIM_ENTRAHIGHSCORE 24
+#define COLUNA_INICIO_ENTRAHIGHSCORE 25
+#define COLUNA_FIM_ENTRAHIGHSCORE 65
+
+#define LINHA_NOME_HIGHSCORE 22
+#define COLUNA_NOME_HIGHSCORE 38
+
+#define MAX_STRINGS_MENU 20
+#define MAXSIZE_STRINGS_MENU 20
+#define MAXSIZE_MSGS_FIMCENARIO 50
+
+#define NUM_OPCOES 5
 
 #define NOVO_JOGO 0
 #define HIGH_SCORES 1
 #define OPCOES 2
 #define CREDITOS 3
 #define SAIR 4
+
+#define MENU_CONFIG_VELOCIDADEINICIAL 0
+#define MENU_CONFIG_MAXTAMANHO 1
+#define MENU_CONFIG_MAXITENS 2
+#define MENU_CONFIG_VOLTAR 3
+
+#define UM_SEGUNDO_EM_MS 1000
 
 #define X_POS 0
 #define Y_POS 1
@@ -48,10 +92,25 @@
 #define I_OPTS_NUMCENARIO 3
 #define I_OPTS_SCORE 4
 
+#define NUM_OPCOES_CONFIG 4
+
+#define MIN_VELOCIDADEINICIAL 1
+#define MAX_VELOCIDADEINICIAL 10
+#define MIN_MAXTAMANHO 10
+#define MAX_MAXTAMANHO 100
+#define MIN_MAXITENS 1
+#define MAX_MAXITENS 10
+
+#define VELOCIDADEINICIAL_PADRAO 5
+#define MAXTAMANHO_PADRAO 20
+#define MAXITENS_PADRAO 5
+
 #define PTS_BASE_COMIDA 2
 #define PTS_BASE_SLOWER 1
 #define PTS_BASE_FASTER 3
 #define PTS_BASE_SKIP 40
+
+#define BONUS_COMPLETA_CENARIO 1000
 
 #define NUM_CENARIOS 3
 #define LINHAS_CENARIO 24
@@ -59,10 +118,9 @@
 
 #define MAX_TUNEIS 5
 
-#define FILENAME_HIGH_SCORES "scores.txt"
 #define MAX_NOME 3
 #define NUM_HIGH_SCORES 10
-
+#define MAXSIZE_STRING_HIGHSCORES 15
 
 #define GAME_OVER 1
 #define CENARIO_COMPLETO 2
@@ -92,17 +150,29 @@ typedef struct score {
     int pontuacao;
 } SCORE;
 
+typedef struct config {
+    int velocidade_inicial;
+    int maxtamanho;
+    int maxitens;
+} CONFIG;
 
+
+void limpa_linha(int linha, int x_ini, int x_fim, int cor);
+void limpa_retangulo(int y_ini, int y_fim, int x_ini, int x_fim, int cor);
+void salva_config(CONFIG opcoes);
+int carrega_config(CONFIG *opcoes);
 void cria_arquivo_tuneis();
 int carrega_score(SCORE *scores);
 void display_high_scores();
 void ordena_score(SCORE *scores);
 void insere_score(SCORE *scores, SCORE novo_score);
 int salva_scores(SCORE *scores);
-void display_menu(int selecionado);
-void controla_menu(int opts[10]);
-void display_menu_opcoes(int selecionado, int opts[10]);
-void controla_menu_opcoes(int opts[10]);
+void display_menu(char items_menu[NUM_OPCOES][MAXSIZE_STRINGS_MENU], int selecionado);
+void atualiza_menu(char items_menu[NUM_OPCOES][MAXSIZE_STRINGS_MENU], int selecionado, int old_selecionado);
+void controla_menu(int *score, int *num_cenario, CONFIG *opcoes);
+void display_menu_opcoes(char items_menu[NUM_OPCOES_CONFIG][MAXSIZE_STRINGS_MENU], int selecionado, CONFIG *opcoes);
+void atualiza_menu_opcoes(char items_menu[NUM_OPCOES_CONFIG][MAXSIZE_STRINGS_MENU], int selecionado, int old_selecionado, CONFIG *opcoes);
+void controla_menu_opcoes(CONFIG *opcoes);
 void display_creditos();
 void limpa_tela_menu();
 void ini_display_menu();
@@ -123,240 +193,162 @@ COORDENADA proxima_coordenada(COORDENADA coord_atual, char direcao);
 void movimenta_snake(SNAKE *p_snake, COORDENADA prox_coord);
 char escolhe_item();
 void gera_novo_item(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]);
-void fim_cenario(int result);
+void fim_cenario(int result, int pontuacao, int num_cenario);
 void processa_score_final(int pontuacao);
 char pega_letra(int x);
 void pega_nome(char *nome);
-int roda_jogo(int opts[10]);
+int roda_jogo(int *score, int *num_cenario, CONFIG *opcoes);
 
+
+// main
 /*
-=====================================
-TODO: Passos para movimentar a SNAKE
-
-;; Prox_Coord: Coord Char -> Coord
--> Prox_Coord()
-V
-
-;; "Colidiu": ? -> ?
--> "Colidiu"()  "processa_movimento" "processa_passo"
-V
-
-;; Mov._Snake: Snake Coord -> Void
--> Mov._Snake()
-V
-
-=====================================
-TODO:
-logica da velocidade V
-- usar pulsos para separar velocidade da cobra do input do usuario?
-
-=====================================
-TODO:
-jogo deve comecar pausado, cobra deve comecar com 5 posicoes ocupadas
-V
-- provavelmente vai precisar de um "inicializa_snake" ou algo do genero
-V
-
-=====================================
-TODO:
-refatorar o input do usuario, separar do movimento em si
-V
-- tirar debug/cheats ?
-
-=====================================
-
-=====================================
-TODO:
-popula_cenario deve receber o numero exato do cenario
-apos isso, ajustar na funcao (atualmente esta decrementando o numero para compatibilidade)
-V
-- o que fazer quando nao encontrar arquivo do mapa?
-V
-
-=====================================
-TODO:
-desenha_cenario deve jah receber a matriz do cenario
-e soh desenhar, sem chamar popula_cenario redundantemente
-V
-- limpar coisas que eram do inicio do desenvolvimento
-V
-
-=====================================
-TODO:
-trocar todas as ocorrencias do cenario para usar 24 linhas
-V
-(e talvez 79 colunas)
-X
-
-=====================================
-TODO:
-verificar logica de gera_novo_item (para evitar de testar as bordas do cenario)
-V
-
-=====================================
-TODO:
-inicializa_cenario?
-V
-
-=====================================
-TODO:
-verificar why nao esta zerando toda a tela do prompt, deixando 4 linhas na parte superior a cada partida
-V
-
-
-=====================================
-
-=====================================
-TODO:
-toda a parte dos tuneis
-- carregar tuneis de arquivo (armazenar num_cenario na estrutura tunel? V)
-V
-- fazer logica da 'colisao'
-V
-- - encontrar tunel
-V
-- - movimentar snake alem do tunel
-V
-- determinar posicao fixa dos tuneis nos cenarios respectivos
-V
-
-=====================================
-TODO:
-toda a parte de scores
-- estrutura score
-V
-- carregar/ordenar/salvar score (pegar das aulas praticas?)
-V
-- integrar scores ao menu
-V
-- cores diferentes para o top 3 ??
-V
-- pegar letras individualmente
-V
-
-=====================================
-TODO:
-config deve ser uma struct com campos OPCAO
-OPCAO tem valor atual, valor minimo e valor maximo
-
-=====================================
-TODO:
-refazer TODA a parte visual do menu
-- deixar melhor estruturado
-- integrar com struct CONFIG e OPCAO
-- redenhar apenas partes necessarias
-
-=====================================
-TODO:
-dividir em varios arquivos
-- io
-- game
-- file_management
-- ?
-
-=====================================
-
+    Entrada do programa, inicializa configuracoes e chama o menu, que controla as funcionalidades do jogo
 */
-
-
-
-
 int main() {
-    //int velocidade = 1, tamanho = 5, score = 0, num_cenario = 1;
-    int opts[10] = {0};
-    opts[I_OPTS_VELOCIDADE] = 10;
-    opts[I_OPTS_MAXTAMANHO] = 50;
-    opts[I_OPTS_MAXITENS] = 5;
-    opts[I_OPTS_NUMCENARIO] = 1;
-    opts[I_OPTS_SCORE] = 0;
+    CONFIG opcoes;
+    int score = 0, num_cenario = 1; // Pontuacao do jogador e cenario atual precisam ser mantidos atraves das partidas
 
+    // Inicializa a estrutura com as configuracoes do jogo
+    carrega_config(&opcoes);
+
+    // Seed para numeros aleatorios
     srand(time(0));
 
-    //display_menu(2);
-
-    controla_menu(opts);
-    //ini_display_menu();
-
-    //display_creditos();
+    // Inicializa o menu que controla o jogo
+    controla_menu(&score, &num_cenario, &opcoes);
 
     // Jogo encerrado, volta as cores para o padrao do terminal
-    //textbackground(0);
     textbackground(BLACK);
     clrscr();
-    //textcolor(15);
     textcolor(WHITE);
 
-    //getchar();
     return 0;
 }
 
-void display_menu(int selecionado) {
-    char items_menu[NUM_OPCOES][20] = {"   NOVO JOGO  ", "  HIGH SCORES ", "    OPCOES    ", "   CREDITOS   ", "     SAIR     "};
+// limpa_linha
+/*
+    Funcao auxiliar que preenche uma linha na tela com a cor de fundo passada
+*/
+void limpa_linha(int linha, int x_ini, int x_fim, int cor) {
     int i;
 
-//    textbackground(15);
-//    textcolor(1);
-    //cputsxy(10, 10, teststring);
-    //textbackground(6);
+    textbackground(cor);
+    for ( i=x_ini ; i < x_fim ; i++) {
+        putchxy(i, linha, ' ');
+    }
+
+}
+
+// limpa_retangulo
+/*
+    Funcao auxiliar que preenche um retangulo na tela com a cor de fundo passada
+*/
+
+void limpa_retangulo(int y_ini, int y_fim, int x_ini, int x_fim, int cor) {
+    int i;
+
+    for (i = y_ini; i < y_fim; i++) {
+        limpa_linha(i, x_ini, x_fim, cor);
+    }
+
+}
+
+// display_menu
+/*
+    Inicializa o menu na tela
+*/
+void display_menu(char items_menu[NUM_OPCOES][MAXSIZE_STRINGS_MENU], int selecionado) {
+    int i;
+
     textbackground(BROWN);
     clrscr();
     ini_display_menu();
     for (i = 0; i < NUM_OPCOES; i++) {
         if (i == selecionado) {
-//            textbackground(0);
-//            textcolor(2);
             textbackground(BLACK);
             textcolor(LIGHTGREEN);
         }
         cputsxy(( MAX_X_TELA - strlen(items_menu[i]))/2, LINHA_INICIO_MENU + i, items_menu[i]);
         if (i == selecionado) {
-//            textbackground(6);
-//            textcolor(0);
             textbackground(BROWN);
             textcolor(BLACK);
         }
     }
 }
 
-void controla_menu(int opts[10]) {
-    int encerrar = 0, selecionado = 0, op, result;
-    display_menu(selecionado);
+// atualiza_menu
+/*
+    Redesenha na tela apenas o item do menu selecionado e o recem de-selecionado
+*/
+void atualiza_menu(char items_menu[NUM_OPCOES][MAXSIZE_STRINGS_MENU], int selecionado, int old_selecionado) {
+    int i;
+
+
+    for (i = 0; i < NUM_OPCOES; i++) {
+
+        if (i == old_selecionado) { // Restaura visualizacao do previamente selecionado para o padrao
+            textbackground(BROWN);
+            textcolor(BLACK);
+            cputsxy(( MAX_X_TELA - strlen(items_menu[i]))/2, LINHA_INICIO_MENU + i, items_menu[i]);
+        }
+
+        if (i == selecionado) { // Mostra o item selecionado com cor de fundo e texto diferentes
+            textbackground(BLACK);
+            textcolor(LIGHTGREEN);
+            cputsxy(( MAX_X_TELA - strlen(items_menu[i]))/2, LINHA_INICIO_MENU + i, items_menu[i]);
+        }
+    }
+    textbackground(BROWN);
+    textcolor(BLACK);
+}
+
+// controla_menu
+/*
+    Logica principal do menu principal, controla as funcionalidades do jogo
+*/
+void controla_menu(int *score, int *num_cenario, CONFIG *opcoes) {
+    char items_menu[NUM_OPCOES][MAXSIZE_STRINGS_MENU] = {"   NOVO JOGO  ", "  HIGH SCORES ", "    OPCOES    ", "   CREDITOS   ", "     SAIR     "};
+    int encerrar = 0, selecionado = 0, op, result, old_selecionado;
+    display_menu(items_menu, selecionado);
 
     while (!encerrar) {
         if (kbhit()) {
             op = getch();
 
-            if (op == 224) {
+            if (op == TECLADO_ESTENDIDO) {
                 switch(getch()) {
                     case ASCII_CIMA:
+                        old_selecionado = selecionado;
                         selecionado--;
                         if (selecionado < 0) selecionado = NUM_OPCOES - 1;
                         selecionado = selecionado % NUM_OPCOES;
+                        atualiza_menu(items_menu, selecionado, old_selecionado);
                         break;
                     case ASCII_BAIXO:
+                        old_selecionado = selecionado;
                         selecionado++;
                         selecionado = selecionado % NUM_OPCOES;
+                        atualiza_menu(items_menu, selecionado, old_selecionado);
                         break;
                     default:
                         break;
                 }
-            } else if (op == 13) {
+            } else if (op == ASCII_ENTER) {
                 switch (selecionado) {
                     case NOVO_JOGO:
-                        opts[I_OPTS_SCORE] = 0;
+                        *score = 0; // Novo jogo, score zerado
                         result = 0;
                         do {
-                            result = roda_jogo(opts);
-                        } while (result == CENARIO_COMPLETO && opts[I_OPTS_NUMCENARIO] != 4);
-                        processa_score_final(opts[I_OPTS_SCORE]);
-                        opts[I_OPTS_NUMCENARIO] = 1;
-
+                            result = roda_jogo(score, num_cenario, opcoes);
+                        } while (result == CENARIO_COMPLETO && *num_cenario != 4);
+                        processa_score_final(*score); // Fim de jogo, verifica se entrou no top ten
+                        *num_cenario = 1; // Proximo novo jogo inicializa no primeiro cenario
                         break;
                     case HIGH_SCORES:
                         display_high_scores();
                         break;
                     case OPCOES:
-                        controla_menu_opcoes(opts);
+                        controla_menu_opcoes(opcoes);
                         break;
                     case CREDITOS:
                         display_creditos();
@@ -365,48 +357,65 @@ void controla_menu(int opts[10]) {
                         encerrar = 1;
                         break;
                 }
-                //display_creditos();
-            } else if (op == 27) {
+                display_menu(items_menu, selecionado); // Voltando de uma tela diferente, necessario reinicializar o menu na tela
+            } else if (op == ASCII_ESC) {
                 encerrar = 1;
             }
 
-            display_menu(selecionado);
         }
 
     }
-    clrscr();
-    printf("Bye");
+
 }
 
-void display_menu_opcoes(int selecionado, int opts[10]) {
-    char items_menu[5][20] = {"VELOCIDADE\t", "MAX TAMANHO\t", "MAX ITENS\t", "CENARIO\t", "VOLTAR"};
-    char str_opcao[23];
+// converte_index_menu_para_valor_config
+/*
+    Funcao auxiliar para display_menu_opcoes, recebe o index de uma opcao no array do menu
+    e converte para o valor da opcao nas configuracoes (apenas para display)
+*/
+int converte_index_menu_para_valor_config(int index, CONFIG opcoes) {
+    switch(index) {
+        case MENU_CONFIG_VELOCIDADEINICIAL:
+            return opcoes.velocidade_inicial;
+            break;
+        case MENU_CONFIG_MAXTAMANHO:
+            return opcoes.maxtamanho;
+            break;
+        case MENU_CONFIG_MAXITENS:
+            return opcoes.maxitens;
+            break;
+        default:
+            return 0;
+            break;
+    }
+}
+
+// display_menu_opcoes
+/*
+    Inicializa o menu de opcoes na tela
+*/
+void display_menu_opcoes(char items_menu[NUM_OPCOES_CONFIG][MAXSIZE_STRINGS_MENU], int selecionado, CONFIG *opcoes) {
+    char str_opcao[MAXSIZE_STRINGS_MENU + 3]; // 3 espacos extra para valor das opcoes
     int i;
 
-//    textbackground(15);
-//    textcolor(1);
-    //cputsxy(10, 10, teststring);
-//    textbackground(6);
     textbackground(BROWN);
     clrscr();
     ini_display_menu();
-    for (i = 0; i < 5; i++) {
-        if (i == selecionado) {
-//            textbackground(0);
-//            textcolor(2);
+    for (i = 0; i < NUM_OPCOES_CONFIG; i++) {
+        if (i == selecionado) { // Display especifico para item selecionado
             textbackground(BLACK);
             textcolor(LIGHTGREEN);
         }
-        if (i != 4) {
-            sprintf(str_opcao, "%s%3d", items_menu[i], opts[i]);
+
+        if (i != MENU_CONFIG_VOLTAR) {
+            sprintf(str_opcao, "%s%3d", items_menu[i], converte_index_menu_para_valor_config(i, *opcoes));
         } else {
             strcpy(str_opcao, items_menu[i]);
         }
-        //cputsxy(35, 15 + i, items_menu[i]);
-        cputsxy(35, 15 + i, str_opcao);
-        if (i == selecionado) {
-//            textbackground(6);
-//            textcolor(0);
+
+        cputsxy(COLUNA_INICIO_MENU_OPCOES, LINHA_INICIO_MENU + i, str_opcao);
+
+        if (i == selecionado) { // Retorna display para o estado normal
             textbackground(BROWN);
             textcolor(BLACK);
         }
@@ -414,45 +423,91 @@ void display_menu_opcoes(int selecionado, int opts[10]) {
 
 }
 
-void controla_menu_opcoes(int opts[10]) {
-    int voltar = 0, selecionado = 0, op;
-    display_menu_opcoes(selecionado, opts);
+// atualiza_menu_opcoes
+/*
+    Redesenha na tela apenas o item do menu selecionado e o recem de-selecionado, para o menu de opcoes
+*/
+void atualiza_menu_opcoes(char items_menu[NUM_OPCOES_CONFIG][MAXSIZE_STRINGS_MENU], int selecionado, int old_selecionado, CONFIG *opcoes) {
+    char str_opcao[MAXSIZE_STRINGS_MENU + 3]; // 3 espacos extra para valor das opcoes
+    int i;
+
+    for (i = 0; i < NUM_OPCOES_CONFIG; i++) {
+
+        if (i == old_selecionado) { // Atualiza na tela o que estava previamente selecionado
+            textbackground(BROWN);
+            textcolor(BLACK);
+
+            if (i != MENU_CONFIG_VOLTAR) {
+                sprintf(str_opcao, "%s%3d", items_menu[i], converte_index_menu_para_valor_config(i, *opcoes));
+            } else {
+                strcpy(str_opcao, items_menu[i]);
+            }
+
+            cputsxy(COLUNA_INICIO_MENU_OPCOES, LINHA_INICIO_MENU + i, str_opcao);
+        }
+
+        if (i == selecionado) { // Atualiza na tela o atualmente selecionado
+            textbackground(BLACK);
+            textcolor(LIGHTGREEN);
+            if (i != MENU_CONFIG_VOLTAR) {
+                sprintf(str_opcao, "%s%3d", items_menu[i], converte_index_menu_para_valor_config(i, *opcoes));
+            } else {
+                strcpy(str_opcao, items_menu[i]);
+            }
+
+            cputsxy(COLUNA_INICIO_MENU_OPCOES, LINHA_INICIO_MENU + i, str_opcao);
+        }
+
+        textbackground(BROWN); // Volta para o display padrao
+        textcolor(BLACK);
+
+    }
+
+}
+
+// controla_menu
+/*
+    Logica principal do menu de opcoes, controla as configuracoes do jogo
+*/
+void controla_menu_opcoes(CONFIG *opcoes) {
+    char items_menu[NUM_OPCOES_CONFIG][MAXSIZE_STRINGS_MENU] = {"VELOCIDADE\t", "MAX TAMANHO\t", "MAX ITENS\t", "VOLTAR"};
+    int voltar = 0, selecionado = 0, old_selecionado, alterou_config = 0, op;
+    display_menu_opcoes(items_menu, selecionado, opcoes);
 
     while (!voltar) {
         if (kbhit()) {
             op = getch();
 
-            if (op == 224) {
+            if (op == TECLADO_ESTENDIDO) {
+                old_selecionado = selecionado;
                 switch(getch()) {
                     case ASCII_CIMA:
                         selecionado--;
-                        if (selecionado < 0) selecionado = 4;
-                        selecionado = selecionado % 5;
+                        if (selecionado < 0) selecionado = NUM_OPCOES_CONFIG - 1 ;
+                        selecionado = selecionado % NUM_OPCOES_CONFIG;
                         break;
                     case ASCII_BAIXO:
                         selecionado++;
-                        selecionado = selecionado % 5;
+                        selecionado = selecionado % NUM_OPCOES_CONFIG;
                         break;
                     case ASCII_DIREITA:
                         switch(selecionado) {
                             case 0: // Velocidade Inicial
-                                if (opts[I_OPTS_VELOCIDADE] < 10) {
-                                    opts[I_OPTS_VELOCIDADE] += 1;
+                                if (opcoes->velocidade_inicial < MAX_VELOCIDADEINICIAL) {
+                                    opcoes->velocidade_inicial += 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             case 1: // MaxTamanho
-                                if (opts[I_OPTS_MAXTAMANHO] < 100) {
-                                    opts[I_OPTS_MAXTAMANHO] += 1;
+                                if (opcoes->maxtamanho < MAX_MAXTAMANHO) {
+                                    opcoes->maxtamanho += 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             case 2: // MaxItens
-                                if (opts[I_OPTS_MAXITENS] < 10) {
-                                    opts[I_OPTS_MAXITENS] += 1;
-                                }
-                                break;
-                            case 3: // Cenario
-                                if (opts[I_OPTS_NUMCENARIO] < 3) {
-                                    opts[I_OPTS_NUMCENARIO] += 1;
+                                if (opcoes->maxitens < MAX_MAXITENS) {
+                                    opcoes->maxitens += 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             default:
@@ -462,23 +517,21 @@ void controla_menu_opcoes(int opts[10]) {
                     case ASCII_ESQUERDA:
                         switch(selecionado) {
                             case 0: // Velocidade Inicial
-                                if (opts[I_OPTS_VELOCIDADE] > 1) {
-                                    opts[I_OPTS_VELOCIDADE] -= 1;
+                                if (opcoes->velocidade_inicial > MIN_VELOCIDADEINICIAL) {
+                                    opcoes->velocidade_inicial -= 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             case 1: // MaxTamanho
-                                if (opts[I_OPTS_MAXTAMANHO] > 10) {
-                                    opts[I_OPTS_MAXTAMANHO] -= 1;
+                                if (opcoes->maxtamanho > MIN_MAXTAMANHO) {
+                                    opcoes->maxtamanho -= 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             case 2: // MaxItens
-                                if (opts[I_OPTS_MAXITENS] > 1) {
-                                    opts[I_OPTS_MAXITENS] -= 1;
-                                }
-                                break;
-                            case 3:
-                                if (opts[I_OPTS_NUMCENARIO] > 1) {
-                                    opts[I_OPTS_NUMCENARIO] -= 1;
+                                if (opcoes->maxitens > MIN_MAXITENS) {
+                                    opcoes->maxitens -= 1;
+                                    alterou_config = 1;
                                 }
                                 break;
                             default:
@@ -488,59 +541,69 @@ void controla_menu_opcoes(int opts[10]) {
                     default:
                         break;
                 }
-            } else if (op == 13) {
+                atualiza_menu_opcoes(items_menu, selecionado, old_selecionado, opcoes);
+            } else if (op == ASCII_ENTER) {
                 switch (selecionado) {
-                    case 4:
+                    case MENU_CONFIG_VOLTAR:
                         voltar = 1;
                         break;
                     default:
                         break;
                 }
-                //display_creditos();
-            } else if (op == 27) {
+            } else if (op == ASCII_ESC) {
                 voltar = 1;
             }
 
-            display_menu_opcoes(selecionado, opts);
+            if (alterou_config) {
+                salva_config(*opcoes);
+            }
+
+            alterou_config = 0; // reseta para nao ficar salvando sempre.
+
         }
     }
 }
 
+// display_creditos
+/*
+    Mostra a tela de creditos
+*/
 void display_creditos() {
     int i, linhas;
-    char creditos[][80] = {"Desenvolvido por Tiago Ceccon e Manuel Micas.",
+    char creditos[][MAX_X_TELA] = {"Desenvolvido por Tiago Ceccon e Manuel Micas.",
                            "Para a cadeira de Algoritmos E Programacao (INF01202)",
                            "do curso de Ciencia da Computacao da UFRGS.",
                            "2017-01"};
 
 
-    //clrscr();
     limpa_tela_menu();
 
     linhas = sizeof(creditos)/sizeof(creditos[0]);
     for (i = 0; i < linhas; i++) {
-        cputsxy((MAX_X_TELA - strlen(creditos[i]))/2, LINHA_INICIO_MENU + i, creditos[i]);
+        cputsxy((MAX_X_TELA - strlen(creditos[i]))/2, LINHA_INICIO_MENU + i, creditos[i]); // Coloca linha (mais ou menos) centralizada na tela
     }
 
     textbackground(BLACK);
     textcolor(LIGHTGREEN);
-    cputsxy(35, LINHA_INICIO_MENU+i+2, "  VOLTAR  ");
+    cputsxy(COLUNA_INICIO_MENU_OPCOES, LINHA_INICIO_MENU+i+2, "  VOLTAR  ");
     textbackground(BROWN);
     textcolor(BLACK);
-    gotoxy(42, LINHA_INICIO_MENU+i+2);
+    gotoxy(42, LINHA_INICIO_MENU+i+2); // x=42 apenas para o cursos ficar abaixo da letra R do "VOLTAR"
 
     while(getch() != ASCII_ENTER);
 }
 
+// display_high_scores
+/*
+    Mostra a tela com o ranking das dez melhores pontuacoes
+*/
 void display_high_scores() {
     SCORE scores[NUM_HIGH_SCORES];
     int i = 0;
-    char str_score[15];
+    char str_score[MAXSIZE_STRING_HIGHSCORES];
 
     carrega_score(scores);
-    //clrscr();
     ordena_score(scores);
-    //display_scores(scores, NUM_HIGH_SCORES);
 
     for(i = 0; i < NUM_HIGH_SCORES; i++) {
         switch(i) {
@@ -560,60 +623,36 @@ void display_high_scores() {
                 break;
         }
         sprintf(str_score, " %s\t%7d ", scores[i].nome, scores[i].pontuacao);
-        cputsxy(30, LINHA_INICIO_HIGH_SCORES+i, str_score);
+        cputsxy(COLUNA_INICIO_HIGH_SCORES, LINHA_INICIO_HIGH_SCORES+i, str_score);
     }
 
     textbackground(BLACK);
     textcolor(LIGHTGREEN);
-    cputsxy(34, LINHA_INICIO_HIGH_SCORES+i+1, "  VOLTAR  ");
+    cputsxy(COLUNA_INICIO_HIGH_SCORES + 4, LINHA_INICIO_HIGH_SCORES+i+1, "  VOLTAR  "); // +4 para ficar visualmente um pouco mais centralizado
     textbackground(BROWN);
     textcolor(BLACK);
-    gotoxy(41, LINHA_INICIO_HIGH_SCORES+i+1);
+    gotoxy(41, LINHA_INICIO_HIGH_SCORES+i+1); // x=41 para o cursos ficar embaixo da letra R
 
     while(getch() != ASCII_ENTER);
 }
 
+// limpa_tela_menu
+/*
+    Funcao auxiliar para limpar a area do menu na tela
+*/
 void limpa_tela_menu() {
-    int i, j;
-    textbackground(BROWN);
-    for (i = LINHA_INICIO_MENU; i < MAX_Y_TELA; i++) {
-        for (j = 2; j < MAX_X_TELA; j++) {
-                putchxy(j, i, ' ');
-        }
-    }
+    limpa_retangulo(LINHA_INICIO_MENU, MAX_Y_TELA, 2, MAX_X_TELA, BROWN); // x_ini = 2 para nao apagar a moldura da tela na primeira coluna
 }
 
+// ini_display_menu
+/*
+    Inicializa a parte estatica do menu na tela
+*/
 void ini_display_menu() {
     int i, j;
-//    char tela[25][80] = {
-//                            {"11111111111111111111111111111111111111111111111111111111111111111111111111111111"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000011111001111011001111100110011001111100000000000000000000001"},
-//                            {"10000000000000000000011000001111011001101100110110001100000000000000000000000001"},
-//                            {"10000000000000000000011111001101011001111100111100001111100000000000000000000001"},
-//                            {"10000000000000000000000011001101111001101100110110001100000000000000000000000001"},
-//                            {"10000000000000000000011111001101111001101100110011001111100000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
-//                            {"11111111111111111111111111111111111111111111111111111111111111111111111111111111"}};
 
-    char tela[11][80] = {
-//                            {"11111111111111111111111111111111111111111111111111111111111111111111111111111111"},
+    // Nome do jogo na parte superior do menu
+    char tela[][MAX_X_TELA] = {
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
@@ -625,40 +664,67 @@ void ini_display_menu() {
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"},
                             {"10000000000000000000000000000000000000000000000000000000000000000000000000000001"}};
-//                            {"11111111111111111111111111111111111111111111111111111111111111111111111111111111"}};
 
     // Desenha moldura
-//    textbackground(2);
     textbackground(GREEN);
-    for (i = 1; i < 81; i++) {
-        putchxy(i, 1, ' ');
-        putchxy(i, 25, ' ');
-    }
-    for (i = 1; i < 26; i++) {
+    limpa_linha(1, 1, MAX_X_TELA+1, GREEN); // Primeira linha da tela, prompt inicia contagem em 1
+    limpa_linha(MAX_Y_TELA, 1, MAX_X_TELA+1, GREEN); // Ultima linha da tela, prompt inicia contagem em 1
+    for (i = 1; i < MAX_Y_TELA+1; i++) { // Preenche primeira e ultima coluna da tela
         putchxy(1, i, ' ');
-        putchxy(80, i, ' ');
+        putchxy(MAX_X_TELA, i, ' ');
     }
     gotoxy(1,1);
 
     // Desenha titulo
-//    textbackground(6);
     textbackground(BROWN);
-    for (i = 1; i < 11; i++) {
-        for (j = 0; j < 80; j++) {
+    for (i = 1; i <= (MAX_Y_TELA-LINHA_INICIO_MENU); i++) {
+        for (j = 0; j < MAX_X_TELA; j++) {
             if (tela[i][j] == '1') {
-//                textbackground(2);
                 textbackground(GREEN);
-                putchxy(j+1, i+1, ' ');
+                putchxy(j+OFFSET_X, i+OFFSET_Y, ' ');
             } else {
-//                textbackground(6);
                 textbackground(BROWN);
-                putchxy(j+1, i+1, ' ');
+                putchxy(j+OFFSET_X, i+OFFSET_Y, ' ');
             }
         }
     }
-//    textbackground(6);
     textbackground(BROWN);
     gotoxy(1,1); // Volta o cursor para o início da tela
+}
+
+// carrega_config
+/*
+    Carrega configuracoes do arquivo binario e preenche a struct passada por referencia
+    Caso haja erro ao abrir arquivo, seta um conjunto padrao de configuracoes
+*/
+int carrega_config(CONFIG *opcoes) {
+    FILE *arq;
+
+    if (arq = fopen(FILENAME_CONFIG, "rb")) {
+        fread(opcoes, sizeof(CONFIG), 1, arq);
+        return 1;
+    } else {
+        opcoes->velocidade_inicial = VELOCIDADEINICIAL_PADRAO;
+        opcoes->maxtamanho = MAXTAMANHO_PADRAO;
+        opcoes->maxitens = MAXITENS_PADRAO;
+        return 0;
+    }
+
+}
+
+// salva_config
+/*
+    Salva configuracao em arquivo binario
+*/
+void salva_config(CONFIG opcoes) {
+    FILE *arq;
+
+    arq = fopen(FILENAME_CONFIG, "wb");
+
+    fwrite(&opcoes, sizeof(CONFIG), 1, arq);
+
+    fclose(arq);
+
 }
 
 // carrega_score
@@ -848,27 +914,24 @@ void inicializa_snake(SNAKE *p_snake, int tamanho, char cenario[LINHAS_CENARIO][
     int i;
 
     p_snake->tamanho = tamanho;
-//    textcolor(WHITE);
-//    printf("\n%d\nAAAAAAAAAAAAA", p_snake->tamanho); getchar();
 
     p_snake->direcao = 'd';
 
-    //p_snake->corpo[0].x = INI_X_SNAKE;
-    //p_snake->corpo[0].y = INI_Y_SNAKE;
 
     textbackground(BACK_SNAKE);
-    for (i = 0; i < tamanho; i++) { //TODO: tirar constante
+    for (i = 0; i < tamanho; i++) {
         p_snake->corpo[i].x = INI_X_SNAKE - i;
         p_snake->corpo[i].y = INI_Y_SNAKE;
         cenario[p_snake->corpo[i].y - 2][p_snake->corpo[i].x - 1] = 'B';
         putchxy(p_snake->corpo[i].x, p_snake->corpo[i].y, ' ');
     }
 
-
-
 }
 
-
+// desenha_snake
+/*
+    Atualiza representacao da cobra na tela, desenhando a cabeca e apagando a cauda
+*/
 void desenha_snake(int x_cabeca, int y_cabeca, int x_cauda, int y_cauda) {
     textbackground(BACK_SNAKE);
     putchxy(x_cabeca, y_cabeca, ' ');
@@ -877,6 +940,10 @@ void desenha_snake(int x_cabeca, int y_cabeca, int x_cauda, int y_cauda) {
     textbackground(BACK_CENARIO);
 }
 
+// desenha_cenario
+/*
+    Inicializa o cenario na tela
+*/
 void desenha_cenario(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]) {
     int i, j;
 
@@ -895,12 +962,17 @@ void desenha_cenario(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]) {
     gotoxy(1,1); // Volta o cursor para o início da tela
 }
 
+// popula_cenario
+/*
+    Preenche a matriz do cenario com a leitura do arquivo de texto
+    Caso nao encontre o arquivo, usa cenarios padroes arbitrarios
+*/
 void popula_cenario(char addr_cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int numero_cenario) {
     int i, j;
     FILE *arq_mapa;
     char nome_arq[9];
     char buf[COLUNAS_CENARIO + 1];
-    char cenario[3][LINHAS_CENARIO][COLUNAS_CENARIO] = {{
+    char cenario[NUM_CENARIOS][LINHAS_CENARIO][COLUNAS_CENARIO] = {{
                             {"1111111111111111111111111111111111111111111111111111111111111111111111111111111"},
                             {"1000000000000000000000000000000000000000000000000000000000000000000000000000001"},
                             {"1000000000000000000000000000000000000000000000000000000000000000000000000000001"},
@@ -978,6 +1050,7 @@ void popula_cenario(char addr_cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int nume
 
     sprintf(nome_arq, "map%d.txt", numero_cenario);
     if ((arq_mapa = fopen(nome_arq, "r")) != NULL) {
+
         for (i = 0; i < LINHAS_CENARIO; i++) {
             fgets(buf, COLUNAS_CENARIO + 1, arq_mapa);
             for (j = 0; j < COLUNAS_CENARIO; j++) {
@@ -985,19 +1058,22 @@ void popula_cenario(char addr_cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int nume
             }
 
         }
-
         fclose(arq_mapa);
+
     } else {
+
         for (i = 0; i < LINHAS_CENARIO; i++) {
             for (j = 0; j < COLUNAS_CENARIO; j++) {
                 addr_cenario[i][j] = cenario[numero_cenario-1][i][j];
             }
         }
+
     }
 }
 
+// inicializa_cenario
 /*
-    inicializa_cenario: Popula array do cenario, faz a inicializacao dele na tela e trata tuneis.
+    Popula array do cenario, faz a inicializacao dele na tela e trata tuneis.
 */
 void inicializa_cenario(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int numero_cenario, TUNEL tuneis[MAX_TUNEIS], int *num_tuneis) {
 
@@ -1008,10 +1084,7 @@ void inicializa_cenario(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int numer
     // Tuneis
     *num_tuneis = inicializa_tuneis(tuneis, numero_cenario);
     posiciona_tuneis_no_cenario(cenario, tuneis, *num_tuneis);
-    //textbackground(WHITE);
-    //printf("OASOGIHAUGHAUIGHAUIGHA\t%d", *num_tuneis); getch();
     desenha_tuneis(tuneis, *num_tuneis);
-    //getch();
 
 }
 
@@ -1020,36 +1093,11 @@ void inicializa_cenario(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], int numer
     Inicializa o array de tuneis
 */
 int inicializa_tuneis(TUNEL tuneis[MAX_TUNEIS], int numero_cenario){
-    //tuneis[0] = {NULL};
-    //tuneis[1] = {{ {3, 4} , 0, 'd', 1} , { {60,4} , 1, 'e', 0}};
-    //int i;
-    /*
-    // Tuneis do CENARIO 2
-    TUNEL t1 = { {10, 4} , 0, 'd', 1, 2};
-    TUNEL t2 = {{60,4} , 1, 'e', 0, 2};
-    */
-
-    /*
-    // Tuneis do CENARIO 3
-    TUNEL t1 = { {15, 12} , 0, 'e', 1, 3};
-    TUNEL t2 = {{30,4} , 1, 'e', 2, 3};
-    TUNEL t3 = { {50, 3} , 2, 'd', 3, 3};
-    TUNEL t4 = {{60,20} , 3, 'e', 4, 3};
-    TUNEL t5 = { {27, 18} , 4, 'd', 0, 3};
-
-    tuneis[0] = t1;
-    tuneis[1] = t2;
-    tuneis[2] = t3;
-    tuneis[3] = t4;
-    tuneis[4] = t5;
-
-    return 5;
-    */
     int tamanho = 0, tam_buff;
     TUNEL tun_buff;
     FILE *arq_tuneis;
 
-    arq_tuneis = fopen("tuneis.bin", "rb");
+    arq_tuneis = fopen(FILENAME_TUNEIS, "rb");
 
     while (!feof(arq_tuneis)) {
         tam_buff = fread(&tun_buff, sizeof(TUNEL), 1, arq_tuneis);
@@ -1064,22 +1112,6 @@ int inicializa_tuneis(TUNEL tuneis[MAX_TUNEIS], int numero_cenario){
 
     return tamanho;
 
-
-
-    //tuneis[2] = {NULL};
-
-    /*{
-        {
-            NULL
-        },
-        {
-            {{3, 4}, 0, 'd', 1},
-            {{60, 4}, 1, 'e', 0}
-        },
-        {
-            NULL
-        }
-            }; */
 }
 
 // posiciona_tuneis_no_cenario
@@ -1129,15 +1161,18 @@ void desenha_tuneis(TUNEL tuneis[MAX_TUNEIS], int num_tuneis) {
 }
 
 
-
+// desenha_interface
+/*
+    Desenha a interface com as informacoes da partida
+*/
 void desenha_interface(int pontuacao, int velocidade, int tamanho, int cenario_atual) {
-    char status[80];
+    char status[MAX_X_TELA];
     int i;
 
     // Todas as informacoes aparecem contanto que pontuacao seja menor do que 99999999, acima disso estoura o limite da tela
     sprintf(status, "Score: %d\tVelocidade: %d\t\tSNAKE\t\tTamanho: %d\tMapa: %d\n",  pontuacao, velocidade, tamanho, cenario_atual);
     textbackground(WHITE);
-    for (i = 1; i < 81; i++) {
+    for (i = 1; i <= MAX_X_TELA; i++) {
         putchxy(i, 1, ' ');
     }
     cputsxy(1,1,status);
@@ -1221,7 +1256,10 @@ void processa_input(SNAKE *p_snake, int *p_pause, int *p_encerrar, int *p_inicia
         }
 }
 
-
+// calcula_pontos
+/*
+    Calcula quantos pontos o usuario deve receber ao pegar determinado item
+*/
 int calcula_pontos(int velocidade, int tamanho, char item) {
     int pts_base, pontos_obtidos;
     switch(item) {
@@ -1244,11 +1282,13 @@ int calcula_pontos(int velocidade, int tamanho, char item) {
     return pontos_obtidos;
 }
 
+// processa_proximo_movimento
+/*
+    Controla a logica da movimentacao a cada turno da partida
+*/
 void processa_proximo_movimento(COORDENADA proxima_coord, int *p_pontuacao, int *p_velocidade, SNAKE *snake, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, int *p_encerrar, int num_cenario){
     char item_no_proximo_movimento = cenario[ proxima_coord.y-OFFSET_Y ][ proxima_coord.x-OFFSET_X ];
 
-    //movimenta_snake(&snake, proxima_coord);
-    //printf("%d\t%d", proxima_coord.x, proxima_coord.y); getch();
     if (item_no_proximo_movimento != '0') {
         processa_colisao(p_pontuacao, p_velocidade, &snake->tamanho, p_encerrar, item_no_proximo_movimento, max_tamanho, cenario, tuneis, num_tuneis, snake, &proxima_coord);
         desenha_interface(*p_pontuacao, *p_velocidade, snake->tamanho, num_cenario);
@@ -1262,35 +1302,38 @@ void processa_proximo_movimento(COORDENADA proxima_coord, int *p_pontuacao, int 
     cenario[ snake->corpo[snake->tamanho].y-OFFSET_Y ][ snake->corpo[snake->tamanho].x-OFFSET_X ] = '0';
 }
 
-
+// processa_colisao
+/*
+    Faz o processamento necessario quando o jogador pega um item
+*/
 void processa_colisao(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *p_encerrar, char item, int max_tamanho, char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], TUNEL *tuneis, int num_tuneis, SNAKE *snake, COORDENADA *proxima_coord) {
     COORDENADA coord_temp;
 
     switch(item) {
         case '1': // Obstaculo
         case 'B': // Corpo da cobra
-            //*p_encerrar = 1;
             *p_encerrar = GAME_OVER;
             break;
         case 'C': // Comida
-            //*p_pontuacao += 2 * (*p_tamanho / 5) * *p_velocidade;
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
-            if (*p_tamanho < max_tamanho) {
+            if (*p_tamanho < max_tamanho - 1) {
                 *p_tamanho += 1;
+            } else {
+                *p_encerrar = CENARIO_COMPLETO; // Passa de cenario ao atingir tamanho maximo da cobra
             }
             gera_novo_item(cenario);
             break;
         case 'S': // Slower
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             gera_novo_item(cenario);
-            if (*p_velocidade > 1) { // TODO: tirar numero constante
+            if (*p_velocidade > MIN_VELOCIDADEINICIAL) {
                 *p_velocidade -= 1;
             }
             break;
         case 'F': // Faster
             *p_pontuacao += calcula_pontos(*p_velocidade, *p_tamanho, item);
             gera_novo_item(cenario);
-            if (*p_velocidade < 10) { // TODO: tirar numero constante
+            if (*p_velocidade < MAX_VELOCIDADEINICIAL) {
                 *p_velocidade += 1;
             }
             break;
@@ -1299,42 +1342,35 @@ void processa_colisao(int *p_pontuacao, int *p_velocidade, int *p_tamanho, int *
             *p_encerrar = CENARIO_COMPLETO;
             break;
         case 'T': // Tunel
-            //if (!entra_tunel(tuneis, snake->corpo, &snake->direcao, num_tuneis )) {
             if (!entra_tunel(tuneis, proxima_coord, &snake->direcao, num_tuneis )) {
-                //coord_temp.x = snake->corpo[0].x+OFFSET_X;
-                //coord_temp.y = snake->corpo[0].y+OFFSET_Y; // TODO: Offset, again
                 coord_temp.x = proxima_coord->x+OFFSET_X;
-                coord_temp.y = proxima_coord->y+OFFSET_Y; // TODO: Offset, again
-                //movimenta_snake(snake, proxima_coordenada(coord_temp, snake->direcao));
+                coord_temp.y = proxima_coord->y+OFFSET_Y;
                 coord_temp = proxima_coordenada(coord_temp, snake->direcao);
-                //snake->corpo[0] = coord_temp;
                 *proxima_coord = coord_temp;
 
                 // Chama uma versao atualizada de si propria para processar o caso de haver um item significativo
-                // logo a frente do tunel
+                // logo na frente do tunel
                 processa_colisao(p_pontuacao, p_velocidade, p_tamanho, p_encerrar, cenario[ proxima_coord->y-OFFSET_Y ][ proxima_coord->x-OFFSET_X ], max_tamanho, cenario, tuneis, num_tuneis, snake, proxima_coord);
 
             } else {
                 *p_encerrar = GAME_OVER;
-            } //printf("UGHAUIGUGUAGSAGS");
+            }
+            break;
+        default:
             break;
 
-        default:
-            //*p_pontuacao += 20;
-            break;
     }
 }
 
-// busca_tunel: funcao do dia 14/06
+// busca_tunel
 /*
-    Entrada: Um vetor de tunel , uma coordenada .
-    Saida: O index do tunel correspondente a coordenada de entrada.
+    Encontra o tunel em uma determinada coordenada, retorna sua id no array
 */
 int busca_tunel(TUNEL *tuneis, COORDENADA coord, int num_tuneis) {
     int i, i_encontrado = -1; //printf("\n\n\n%d\t%d\t%d\t%d", tuneis[0].pos.x, tuneis[0].pos.y, coord.x, coord.y); getch();
 
     for (i = 0; i < num_tuneis; i++) {
-        if ((tuneis[i].pos.x == coord.x -1 ) && (tuneis[i].pos.y == coord.y - 2)) { // Arrumar offsets nas representacoes das pos x, y de cobra e tunel
+        if ((tuneis[i].pos.x == coord.x -OFFSET_X ) && (tuneis[i].pos.y == coord.y - OFFSET_Y)) { // Arrumar offsets nas representacoes das pos x, y de cobra e tunel
             i_encontrado = i;
         }
     }
@@ -1342,35 +1378,24 @@ int busca_tunel(TUNEL *tuneis, COORDENADA coord, int num_tuneis) {
     return i_encontrado;
 }
 
-// entra_tunel: funcao do dia 14/06
+// entra_tunel
 /*
-    Entrada: Um vetor de tunel , um vetor de coordenada representando a cobra, um ponteiro para a direcao
-    atual da cobra.
-    Comportamento: A funcao deve:
-    -Buscar o tunel correspondente a coordenada.
-    -Verificar se a cobra esta entrando no tunel pela direcao correta.
-    Opcional: Mover a cabeca da cobra para o tunel correspondente e alterar a sua
-    direcao.
+    Processa a logica da entrada em um tunel, returna 1 se entrou pela direcao errada, 0 se deu tudo certo
 */
 int entra_tunel(TUNEL *tuneis, COORDENADA *corpo, char *direcao, int num_tuneis) {
     int i, novo_x, novo_y;
     char nova_direcao;
 
-    //i = busca_tunel(tuneis, corpo[0], num_tuneis);
     i = busca_tunel(tuneis, *corpo, num_tuneis);
-    //printf("\n\n\n\n%c", *direcao); // TODO: limpar debug
-    //return 0;
 
     if (*direcao != tuneis[i].direcao) {
         return 1; // Cobra entrou pela direcao errada, morreu
     }
 
-    novo_x = tuneis[tuneis[i].id_saida].pos.x; //printf("NovoX:%d\n", novo_x);
-    novo_y = tuneis[tuneis[i].id_saida].pos.y; //printf("NovoY:%d\n", novo_y);
-    nova_direcao = tuneis[tuneis[i].id_saida].direcao; //printf("NovaD:%c\n", nova_direcao);
+    novo_x = tuneis[tuneis[i].id_saida].pos.x;
+    novo_y = tuneis[tuneis[i].id_saida].pos.y;
+    nova_direcao = tuneis[tuneis[i].id_saida].direcao;
 
-    //corpo[0].x = novo_x;
-    //corpo[0].y = novo_y;
     corpo->x = novo_x;
     corpo->y = novo_y;
     *direcao = nova_direcao;
@@ -1426,8 +1451,6 @@ void movimenta_snake(SNAKE *p_snake, COORDENADA prox_coord) {
 // escolhe_item
 /*
     Escolhe um item aleatoriamente e retorna um caracter correspondente.
-    O item deve ser escolhido de acordo com as probabilidades descritas na definicao
-    do trabalho final.
 */
 char escolhe_item() {
     // val: Valor aleatorio de 0 a 99, a faixa onde ele cair determina o objeto a ser retornado
@@ -1449,43 +1472,59 @@ char escolhe_item() {
     return objeto;
 }
 
+// gera_novo_item
+/*
+    Cria um novo item e o coloca em uma posicao aleatoria no cenario que nao esteja ocupada
+*/
 void gera_novo_item(char cenario[LINHAS_CENARIO][COLUNAS_CENARIO]) {
     int novo_x, novo_y;
     char novo_item = escolhe_item();
 
     do {
-//        novo_y = ((int) (rand() / (double) RAND_MAX * (22+1))) + 2;
-//        novo_x = ((int) (rand() / (double) RAND_MAX * (78+1))) + 1;
-        novo_y = ((int) (rand() / (double) RAND_MAX * (LINHAS_CENARIO - 2) )) + 1;
-        novo_x = ((int) (rand() / (double) RAND_MAX * (COLUNAS_CENARIO - 3))) + 1;
+        novo_y = ((int) (rand() / (double) RAND_MAX * (LINHAS_CENARIO - 2) )) + 1; // Ajusta a escolha do numero aleatorio para evitar
+        novo_x = ((int) (rand() / (double) RAND_MAX * (COLUNAS_CENARIO - 3))) + 1; // testes nas extremidades (que sempre estao ocupadas com obstaculos)
     } while (cenario[novo_y][novo_x] != '0');
 
     cenario[novo_y][novo_x] = novo_item;
-    putchxy(novo_x+1, novo_y+2, novo_item);
+    putchxy(novo_x+OFFSET_X, novo_y+OFFSET_Y, novo_item);
 
 }
 
-void fim_cenario(int result) {
-    char mensagem[50];
+// fim_cenario
+/*
+    Processa o final de uma partida
+*/
+void fim_cenario(int result, int pontuacao, int num_cenario) {
+    char mensagem[MAXSIZE_MSGS_FIMCENARIO];
+    char mensagem_pontuacao[MAXSIZE_MSGS_FIMCENARIO];
+    int mostrar_pontuacao = 1;
+
     switch(result) {
         case GAME_OVER:
-            sprintf(mensagem, "GAME OVER");
+            sprintf(mensagem, "   GAME OVER   ");
             break;
         case CENARIO_COMPLETO:
             sprintf(mensagem, "CENARIO COMPLETO");
+            if (num_cenario != NUM_CENARIOS) { // Nao finalizou o ultimo cenario
+                mostrar_pontuacao = 0;
+            }
             break;
         case USER_EXIT:
-            sprintf(mensagem, "VOCE SAIU");
+            sprintf(mensagem, "   VOCE SAIU   ");
             break;
         default:
             break;
     }
 
-    textbackground(BROWN);
-    textcolor(LIGHTRED);
+    limpa_retangulo(LINHA_INICIO_FIMCENARIO, LINHA_FIM_FIMCENARIO, COLUNA_INICIO_FIMCENARIO, COLUNA_FIM_FIMCENARIO, WHITE);
 
-    cputsxy(36, 12, mensagem);
-    cputsxy(30, 13, "Aperte ENTER para sair.");
+    textcolor(BLACK);
+    cputsxy(COLUNA_MSG_FIMCENARIO, LINHA_MSG_FIMCENARIO, mensagem);
+    if (mostrar_pontuacao) {
+        sprintf(mensagem_pontuacao, "%s%8d", "PONTUACAO FINAL: ", pontuacao);
+        cputsxy(COLUNA_PONTUACAO_FIMCENARIO, LINHA_PONTUACAO_FIMCENARIO, mensagem_pontuacao);
+    }
+    cputsxy(COLUNA_SAIR_FIMCENARIO, LINHA_SAIR_FIMCENARIO, "Aperte ENTER para sair.");
 
     while(getch() != ASCII_ENTER);
 }
@@ -1510,13 +1549,11 @@ void processa_score_final(int pontuacao){
 
     if(entra) {
         novo_high_score.pontuacao = pontuacao;
-        cputsxy(30, 18, "VOCE ENTROU NO TOP 10!!!");
+        limpa_retangulo(LINHA_INICIO_ENTRAHIGHSCORE, LINHA_FIM_ENTRAHIGHSCORE, COLUNA_INICIO_ENTRAHIGHSCORE, COLUNA_FIM_ENTRAHIGHSCORE, WHITE);
+        cputsxy(COLUNA_INICIO_ENTRAHIGHSCORE+5, LINHA_INICIO_ENTRAHIGHSCORE+1, "VOCE ENTROU NO TOP 10!!!");
         pega_nome(novo_high_score.nome);
         insere_score(scores, novo_high_score);
         salva_scores(scores);
-        //printf("HIGH SCORE!!!!!\n%s", novo_high_score.nome);
-        //display_scores(scores, NUM_HIGH_SCORES);
-        //getch();
     }
 
 }
@@ -1530,8 +1567,8 @@ char pega_letra(int x) {
     char letra = 'A';
     int op, fim = 0;
 
-    putchxy(x, 20, letra); // Mostra a letra atualmente selecionada
-    gotoxy(x, 20);
+    putchxy(x, LINHA_NOME_HIGHSCORE, letra); // Mostra a letra atualmente selecionada
+    gotoxy(x, LINHA_NOME_HIGHSCORE);
 
     while(!fim){
 
@@ -1552,8 +1589,8 @@ char pega_letra(int x) {
                         }
                         break;
                 }
-                putchxy(x, 20, letra); // Atualiza a letra na tela
-                gotoxy(x, 20);
+                putchxy(x, LINHA_NOME_HIGHSCORE, letra); // Atualiza a letra na tela
+                gotoxy(x, LINHA_NOME_HIGHSCORE);
             } else if(op == ASCII_ENTER) {
                 fim = 1;
             }
@@ -1564,168 +1601,83 @@ char pega_letra(int x) {
     return letra;
 }
 
+// pega_nome
+/*
+    Pega o nome do jogador para entrar no ranking, preenchendo a string da estrutura
+*/
 void pega_nome(char *nome) {
-    //cputsxy(30, 20, "Nome (3 caracteres): ");
-    cputsxy(30, 20, "Nome: ");
-    nome[0] = pega_letra(37);
-    nome[1] = pega_letra(38);
-    nome[2] = pega_letra(39);
+    cputsxy(COLUNA_NOME_HIGHSCORE, LINHA_NOME_HIGHSCORE, "Nome: ");
+    nome[0] = pega_letra(COLUNA_NOME_HIGHSCORE + 7); // Cada vez aumenta um para que as letras aparecam uma do lado da outra
+    nome[1] = pega_letra(COLUNA_NOME_HIGHSCORE + 8);
+    nome[2] = pega_letra(COLUNA_NOME_HIGHSCORE + 9);
     nome[3] = '\0';
     //fgets(nome, 4, stdin);
     fflush(stdin);
 }
 
-
-int roda_jogo(int opts[10]) {
-    //int snake[101][2] = {0}; // Verificar como contornar inicializacao do array com num variavel
-    int proximo_movimento[2] = {1,0} ;
-    char cenario[LINHAS_CENARIO][COLUNAS_CENARIO];
+// roda_jogo
+/*
+    Logica principal do jogo, controla o processamento de uma partida do comeco ao fim
+*/
+int roda_jogo(int *score, int *num_cenario, CONFIG *opcoes) {
+    // Inicializacao de variaveis
+    char cenario[LINHAS_CENARIO][COLUNAS_CENARIO], item_no_proximo_movimento;
     TUNEL tuneis[MAX_TUNEIS] = {0};
-    int num_tuneis;
-    char item_no_proximo_movimento;
-    int encerrar = 0, pause = 1, inicializado = 0;
-    int op;
-    int i;
-    int aux_x, aux_y;
-//    int velocidade = 1, tamanho = 5, score = 0;
-    int velocidade = opts[I_OPTS_VELOCIDADE];
-    int tamanho = 5;
-    //int score = 0;
-    //SNAKE snake = {{0}, 'd', 5};
+    int num_tuneis, encerrar = 0, pause = 1, inicializado = 0, op, i;
+    int velocidade = opcoes->velocidade_inicial;
     SNAKE snake = {0};
     COORDENADA proxima_coord;
 
-
-    //snake[0][X_POS] = 40;
-    //snake[0][Y_POS] = 15;
-    /*
-    snake[0][X_POS] = 20;
-    snake[0][Y_POS] = 10;
-    */
-//    snake.corpo[0].x = 20;
-//    snake.corpo[0].y = 12;
-
-    //snake.corpo[0].x = INI_X_SNAKE;  |||
-    //snake.corpo[0].y = INI_Y_SNAKE;  |||
-
-//    snake.corpo[1].x = 19;
-//    snake.corpo[1].y = 12;
-//    snake.corpo[2].x = 18;
-//    snake.corpo[2].y = 12;
-//    snake.corpo[3].x = 17;
-//    snake.corpo[3].y = 12;
-//    snake.corpo[4].x = 16;
-//    snake.corpo[4].y = 12;
-
-//    snake[1][X_POS] = 39;
-//    snake[1][Y_POS] = 15;
-//    snake[2][X_POS] = 38;
-//    snake[2][Y_POS] = 15;
-//    snake[3][X_POS] = 37;
-//    snake[3][Y_POS] = 15;
-//    snake[4][X_POS] = 36;
-//    snake[4][Y_POS] = 15;
-//    snake[5][X_POS] = 35;
-//    snake[5][Y_POS] = 15;
-
-//    printf("Escolha o cenario: ");
-//    scanf("%d", &num_cenario);
-//
+    // Inicio do processamento
     textbackground(BROWN);
     textcolor(BLACK);
     clrscr();
 
-    // Gera array do cenario para logica do jogo
-    // TODO: Mudar popula_cenario para que pegue do arquivo txt V
-    //popula_cenario(cenario, opts[I_OPTS_NUMCENARIO]);
-
-    // Gera cenario na tela
-    // TODO: Mudar desenha_cenario para que ela receba o cenario e desenhe V
-    //desenha_cenario(cenario);
-
-    // Gerencia toda a inicializacao do cenario
-    inicializa_cenario(cenario, opts[I_OPTS_NUMCENARIO], tuneis, &num_tuneis);
+    inicializa_cenario(cenario, *num_cenario, tuneis, &num_tuneis);
 
     inicializa_snake(&snake, INI_TAM_SNAKE, cenario);
-    desenha_interface(opts[I_OPTS_SCORE], velocidade, snake.tamanho, opts[I_OPTS_NUMCENARIO]);
 
-    //cenario[snake[0][Y_POS]-2][snake[0][X_POS]-1] = 'B'; // Evita que o primeiro item seja colocado na cabeca da cobra
-    //cenario[snake.corpo[0].y - 2][snake.corpo[0].x - 1] = 'B'; // Evita que o primeiro item seja colocado na cabeca da cobra
+    desenha_interface(*score, velocidade, snake.tamanho, *num_cenario);
 
-    textbackground(BROWN);
+    textbackground(BROWN); // Garante que alteracoes no display nas funcoes anteriores nao interfiram
     textcolor(BLACK);
-//    gera_novo_item(cenario);
-    for(i = 0; i < opts[I_OPTS_MAXITENS]; i++) {
+
+    // Inicializa os itens
+    for(i = 0; i < opcoes->maxitens ; i++) {
         gera_novo_item(cenario);
     }
 
+    // Loop principal do jogo
     while (!encerrar) {
 
+        // Entradas do usuario
         processa_input(&snake, &pause, &encerrar, &inicializado, cenario);
 
         if (!pause) {
 
             proxima_coord = proxima_coordenada(snake.corpo[0], snake.direcao);
 
-            //movimenta_snake(&snake, proxima_coord);
-
-            // Debug
-            //gotoxy(1,1);
-            //printf("%c\t%d\t%d\n", cenario[snake[0][Y_POS]-1 ][ snake[0][X_POS]-1], snake[0][Y_POS], snake[0][X_POS]);
-
-            //item_no_proximo_movimento = cenario[ snake[0][Y_POS]-2 ][ snake[0][X_POS]-1 ];
-//            item_no_proximo_movimento = cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ];
             item_no_proximo_movimento = cenario[ proxima_coord.y-OFFSET_Y ][ proxima_coord.x-OFFSET_X ];
-            //if (cenario[ snake[0][Y_POS]-2 ][ snake[0][X_POS]-1 ] == '1') {
-//            if (item_no_proximo_movimento == '1') {
-//                pause = 1;
-//                encerrar = 1;
-//            }
 
+            // Parte logica da movimentacao
+            processa_proximo_movimento(proxima_coord, score, &velocidade, &snake, opcoes->maxtamanho, cenario, tuneis, num_tuneis, &encerrar, *num_cenario);
 
-            processa_proximo_movimento(proxima_coord, &opts[I_OPTS_SCORE], &velocidade, &snake, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &encerrar, opts[I_OPTS_NUMCENARIO]);
-            //colidiu(&opts[I_OPTS_SCORE], &velocidade, &snake.tamanho, &encerrar, item_no_proximo_movimento, opts[I_OPTS_MAXTAMANHO], cenario, tuneis, num_tuneis, &snake);
-
-            //movimenta_snake(&snake, proxima_coord);
-
-            //if (item_no_proximo_movimento != '0') {
-            //    desenha_interface(opts[I_OPTS_SCORE], velocidade, snake.tamanho, opts[I_OPTS_NUMCENARIO]);
-            //}
-
-
-            /*desenha_snake(snake[0][X_POS], snake[0][Y_POS], snake[tamanho][X_POS], snake[tamanho][Y_POS]);
-
-            // Atualiza posicao da cobra na matriz do cenario
-            cenario[ snake[0][Y_POS]-2 ][ snake[0][X_POS]-1 ] = 'B';
-            cenario[ snake[tamanho][Y_POS]-2 ][ snake[tamanho][X_POS]-1 ] = '0';
-            */
-
+            // Parte visual da movimentacao, de acordo com a versao atualizada da parte logica
             desenha_snake(snake.corpo[0].x, snake.corpo[0].y, snake.corpo[snake.tamanho].x, snake.corpo[snake.tamanho].y);
 
-//            // Atualiza posicao da cobra na matriz do cenario
-//            cenario[ snake.corpo[0].y-OFFSET_Y ][ snake.corpo[0].x-OFFSET_X ] = 'B';
-//            cenario[ snake.corpo[snake.tamanho].y-OFFSET_Y ][ snake.corpo[snake.tamanho].x-OFFSET_X ] = '0';
-
         }
-        //gotoxy(1,1);
 
-        Sleep(1000/velocidade); // TODO: tirar numero constante
+        // Controle da velocidade
+        Sleep(UM_SEGUNDO_EM_MS/velocidade);
 
     }
 
-
-
-
-    //getch();
-
-    fim_cenario(encerrar);
+    fim_cenario(encerrar, *score, *num_cenario);
 
     if (encerrar == CENARIO_COMPLETO) {
-        opts[I_OPTS_NUMCENARIO] += 1;
-        opts[I_OPTS_SCORE] += 1000;
+        *num_cenario += 1;
+        *score += BONUS_COMPLETA_CENARIO; // Pontuacao extra ao completar cenario
     }
-
-    //gotoxy(1, 29);
 
     return encerrar;
 }
