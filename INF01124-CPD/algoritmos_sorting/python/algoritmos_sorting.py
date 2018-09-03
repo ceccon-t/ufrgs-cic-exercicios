@@ -27,7 +27,7 @@ class InsertionSort:
 
 class BubbleSort:
     # Traverses the entire list checking adjacent elements
-    # and switching them if they are in order - effectively
+    # and switching them if they are not in order - effectively
     # "bubbling" the largest ones one at a time to the end
     # of the list. Stops when after a traversal it has not
     # switched any elements, which means they are all in order.
