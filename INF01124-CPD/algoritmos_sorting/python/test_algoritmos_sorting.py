@@ -6,7 +6,7 @@ from algoritmos_sorting import *
 class SortingTest(unittest.TestCase):
 
     def setUp(self):
-        self.sorter = InsertionSort()
+        self.sorter = BubbleSort()
 
     def tearDown(self):
         pass
@@ -42,6 +42,11 @@ class SortingTest(unittest.TestCase):
 
     def test_multiple_elements_odd(self):
         lst = [7, 4, 6, 3, 1]
+        sorted_lst = self.sorter.sort(lst)
+        self.assertTrue(self.areEqual(sorted_lst, sorted(lst)))
+
+    def test_multiple_elements_with_repetition(self):
+        lst = [7, 4, 6, 4, 3, 1]
         sorted_lst = self.sorter.sort(lst)
         self.assertTrue(self.areEqual(sorted_lst, sorted(lst)))
 
