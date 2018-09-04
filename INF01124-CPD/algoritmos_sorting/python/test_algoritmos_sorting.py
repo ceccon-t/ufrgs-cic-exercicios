@@ -6,7 +6,7 @@ from algoritmos_sorting import *
 class SortingTest(unittest.TestCase):
 
     def setUp(self):
-        self.sorter = BubbleSort()
+        self.sorter = Quicksort()
 
     def tearDown(self):
         pass
@@ -50,6 +50,11 @@ class SortingTest(unittest.TestCase):
         sorted_lst = self.sorter.sort(lst)
         self.assertTrue(self.areEqual(sorted_lst, sorted(lst)))
 
+    def test_all_elements_equal(self):
+        lst = [42, 42, 42, 42, 42, 42]
+        sorted_lst = self.sorter.sort(lst)
+        self.assertTrue(self.areEqual(sorted_lst, sorted(lst)))
+
     def test_already_ordered(self):
         lst = [2, 3, 5, 7, 11, 13]
         sorted_lst = self.sorter.sort(lst)
@@ -59,3 +64,4 @@ class SortingTest(unittest.TestCase):
         lst = [13, 11, 7, 5, 3, 2]
         sorted_lst = self.sorter.sort(lst)
         self.assertTrue(self.areEqual(sorted_lst, sorted(lst)))
+
