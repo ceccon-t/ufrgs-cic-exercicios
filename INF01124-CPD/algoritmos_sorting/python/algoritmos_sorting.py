@@ -108,3 +108,26 @@ class Quicksort:
 
         # returns new position of the pivot
         return j
+
+class SelectionSort:
+    # Traverses the entire list and, for each position,
+    # finds the smallest element of the unsorted part
+    # and places it in that position. Thus the part of
+    # the list to the left of the current position is
+    # already sorted, and the part to the right is unsorted.
+
+    def sort(self, lst_to_sort):
+        lst = copy.deepcopy(lst_to_sort)
+
+        for i in range(len(lst)):
+            smallest_value = lst[i]
+            smallest_position = i
+            for j in range(i+1, len(lst)):
+                if lst[j] < smallest_value:
+                    smallest_value = lst[j]
+                    smallest_position = j
+            aux = lst[i]
+            lst[i] = lst[smallest_position]
+            lst[smallest_position] = aux
+
+        return lst
