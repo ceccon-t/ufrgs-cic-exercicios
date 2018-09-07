@@ -134,13 +134,14 @@ class SelectionSort:
 
 class Heapsort:
     # Processes the list by seeing it as if it was a 'binary tree'
-    # where the all levels except the last one are completely filled
+    # where all the levels except the last one are completely filled
     # with the elements of the list in the order they appear.
     # Starts by generating a max-heap, a structure in which each node
     # of the tree is greater than either of its children, placing
     # its root element (which will be the largest in the list) at the very end
     # and decrementing the size of the subset of the list it is processing,
-    # then runs itself again on this smaller partition until only one element is left
+    # then corrects the violation on max-heap constraint introduced by that change
+    # and repeats this change-correct loop until only one element is left
     # (the smallest one, which will be in the first position of the list by then).
 
     def sort(self, lst_to_sort):
@@ -148,8 +149,10 @@ class Heapsort:
 
         bound = len(lst) - 1
 
+        self.__build_heap(lst, bound)
+
         while bound > 0:
-            self.__heapify(lst, bound)
+            self.__heapify(lst, bound, 0)
             self.__swap(lst, 0, bound)
             bound -= 1
 
@@ -176,13 +179,13 @@ class Heapsort:
     def __get_right_child(self, pos_node, heap):
         return heap[self.__pos_right_child(pos_node)]
 
-    def __heapify(self, heap, bound):
+    def __build_heap(self, heap, bound):
         # Generates a heap - starts in the middle because
         # leaves are already by themselves a heap
         for i in range(int(bound/2), -1, -1):
-            self.__correct_heap(heap, bound, i)
+            self.__heapify(heap, bound, i)
 
-    def __correct_heap(self, heap, bound, i):
+    def __heapify(self, heap, bound, i):
         # Checks if there is a violation of the max-heap constraint
         # in the relationship between node at position i and its children
         # and, if that is the case, fixes it
@@ -196,7 +199,7 @@ class Heapsort:
 
             if largest_value > heap[i]:
                 self.__swap(heap, i, largest_pos)
-                self.__correct_heap(heap, bound, largest_pos)
+                self.__heapify(heap, bound, largest_pos)
 
     def __swap(self, heap, pos_current, pos_destiny):
         aux = heap[pos_destiny]
