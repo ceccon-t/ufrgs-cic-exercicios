@@ -205,3 +205,51 @@ class Heapsort:
         aux = heap[pos_destiny]
         heap[pos_destiny] = heap[pos_current]
         heap[pos_current] = aux
+
+class MergeSort:
+    # Breaks the list into n unitary lists (which are by default sorted) and
+    # works upwards from there, merging two adjacent sorted lists together,
+    # ensuring that the resulting list remains ordered.
+
+    def sort(self, lst_to_sort):
+        lst = copy.deepcopy(lst_to_sort)
+
+        self.mergesort(lst, 0, len(lst))
+
+        return lst
+
+    def mergesort(self, lst, first, last):
+        if (last - first) > 1:
+            middle = (first + last) // 2
+            self.mergesort(lst, first, middle)
+            self.mergesort(lst, middle, last)
+            self.merge(lst, first, lst[first:middle], lst[middle:last])
+
+    def merge(self, lst, start, lst1, lst2):
+        # Given two adjacent sorted sub-lists inside of a list,
+        # merge them placing the result back inside the main list.
+        i = 0
+        j = 0
+        current = start
+        end_lst1 = len(lst1)
+        end_lst2 = len(lst2)
+
+        while i < end_lst1 and j < end_lst2:
+            if lst1[i] <= lst2[j]:
+                lst[current] = lst1[i]
+                i += 1
+            else:
+                lst[current] = lst2[j]
+                j += 1
+            current += 1
+
+        while i < end_lst1:
+            lst[current] = lst1[i]
+            i += 1
+            current += 1
+
+        while j < end_lst2:
+            lst[current] = lst2[j]
+            j += i
+            current += 1
+

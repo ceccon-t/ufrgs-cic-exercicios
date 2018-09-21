@@ -6,7 +6,7 @@ from algoritmos_sorting import *
 class SortingTest(unittest.TestCase):
 
     def setUp(self):
-        self.sorter = Heapsort()
+        self.sorter = MergeSort()
 
     def tearDown(self):
         pass
